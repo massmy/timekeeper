@@ -3,6 +3,7 @@ package data
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -17,6 +18,9 @@ type LogBook struct {
 
 func Load(path string) (logbook LogBook, err error) {
 	logbook = LogBook{}
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return logbook, nil
+	}
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return

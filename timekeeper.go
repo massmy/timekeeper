@@ -23,6 +23,11 @@ func main() {
 		log.Fatal(err)
 		return
 	}
+
+	if logBook.Entrys == nil {
+		logBook.Entrys = []data.Entry{}
+	}
+
 	p := tea.NewProgram(initialModel(logBook))
 
 	if err := p.Start(); err != nil {
@@ -34,6 +39,7 @@ type tickMsg struct{}
 type errMsg error
 
 type model struct {
+	cursor    int
 	logBook   data.LogBook
 	textInput textinput.Model
 	err       error
@@ -44,9 +50,10 @@ func initialModel(logBook data.LogBook) model {
 	ti.Placeholder = ""
 	ti.Focus()
 	ti.CharLimit = 156
-	ti.Width = 20
+	ti.Width = 80
 
 	return model{
+		cursor:    -1,
 		textInput: ti,
 		err:       nil,
 		logBook:   logBook,
@@ -63,11 +70,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter:
-			if m.logBook.Entrys == nil {
-				m.logBook.Entrys = []data.Entry{}
+		case tea.KeyUp:
+			if m.cursor > 0 {
+				m.cursor--
 			}
-			m.logBook.Entrys = append(m.logBook.Entrys, data.Entry{Date: time.Now(), Content: m.textInput.Value()})
+			break
+		case tea.KeyDown:
+			if m.cursor < len(m.logBook.Entrys)-1 {
+				m.cursor++
+			}
+			break
+		case tea.KeyEnter:
+			if m.cursor > -1 && len(m.logBook.Entrys) > m.cursor {
+				entry := m.logBook.Entrys[m.cursor]
+				entry.Content = m.textInput.Value()
+				m.logBook.Entrys[m.cursor] = entry
+			} else {
+				m.logBook.Entrys = append(m.logBook.Entrys, data.Entry{Date: time.Now(), Content: m.textInput.Value()})
+			}
 			err := m.logBook.Write(dataFilePath)
 			if err != nil {
 				log.Fatal(err)
@@ -77,7 +97,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	// We handle errors just like any other message
 	case errMsg:
 		m.err = msg
 		return m, nil
@@ -88,14 +107,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	var entrys string
-	if m.logBook.Entrys != nil {
-		for _, v := range m.logBook.Entrys {
-			entrys += fmt.Sprintf("[%s] %s\r\n", v.Date.Format(time.RFC822), v.Content)
+	var s string
+	for i, v := range m.logBook.Entrys {
+		cursor := " " // no cursor
+		if m.cursor == i {
+			cursor = ">" // cursor!
 		}
-		entrys += "\r\n"
+
+		s += fmt.Sprintf("%s [%s] %s\r\n", cursor, v.Date.Format(time.RFC822), v.Content)
 	}
-	return entrys + fmt.Sprintf(
+
+	return s + fmt.Sprintf(
 		"What are you working on?\n\n%s\n\n%s",
 		m.textInput.View(),
 		"(esc to quit)",
