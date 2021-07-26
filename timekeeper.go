@@ -112,13 +112,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	var s string
+	lowerbound, upperbound := calculateBoundaries(len(m.logBook.Entrys), m.cursor)
 	for i, v := range m.logBook.Entrys {
 		cursor := " " // no cursor
 		if m.cursor == i {
 			cursor = ">" // cursor!
 		}
-
-		s += fmt.Sprintf("%s [%s] %s\r\n", cursor, v.Date.Format(time.RFC822), v.Content)
+		if i <= upperbound && i >= lowerbound {
+			s += fmt.Sprintf("%s [%s] %s\r\n", cursor, v.Date.Format(time.RFC822), v.Content)
+		}
 	}
 
 	return s + fmt.Sprintf(
@@ -126,4 +128,32 @@ func (m model) View() string {
 		m.textInput.View(),
 		"(esc to quit)",
 	) + "\n"
+}
+
+func calculateBoundaries(count, index int) (lowerbound, upperbound int) {
+	if count <= 10 {
+		lowerbound = 0
+		upperbound = 10
+		return
+	}
+	maxIndex := count - 1
+	if index == -1 {
+		upperbound = maxIndex
+		lowerbound = maxIndex - 8
+		if lowerbound < 0 {
+			lowerbound = 0
+		}
+		return
+	}
+	lowerbound = index - 4
+	upperbound = index + 4
+	if upperbound > maxIndex {
+		lowerbound -= upperbound % maxIndex
+		upperbound = maxIndex
+	} else if lowerbound < 0 {
+		upperbound -= lowerbound
+		lowerbound = 0
+	}
+
+	return
 }
