@@ -73,11 +73,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyUp:
 			if m.cursor > 0 {
 				m.cursor--
+			} else {
+				m.cursor = len(m.logBook.Entrys) - 1
 			}
 			break
 		case tea.KeyDown:
 			if m.cursor < len(m.logBook.Entrys)-1 {
 				m.cursor++
+			} else {
+				m.cursor = -1
 			}
 			break
 		case tea.KeyEnter:
